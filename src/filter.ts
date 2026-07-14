@@ -16,6 +16,9 @@
  * Comparison operators and existence markers are written literally in the
  * query string (not percent-encoded) so the API can parse them correctly.
  * String values are percent-encoded to handle spaces and special characters.
+ *
+ * Passing an unrecognized filter shape throws a `TypeError` rather than
+ * silently omitting the filter, which could produce plausible-but-wrong results.
  */
 
 import type { NumberFilter, StringFilter } from './types.js';
@@ -37,8 +40,6 @@ function serializeStringFilter(key: string, filter: StringFilter): string {
     return `${key}=${encodeURIComponent(filter)}`;
   }
 
-  // Cast to a generic object so we can check which property is present.
-  // The public types guarantee only valid shapes reach this function.
   const f = filter as Record<string, unknown>;
 
   if ('exists' in f) return (f['exists'] as boolean) ? key : `!${key}`;
@@ -48,7 +49,7 @@ function serializeStringFilter(key: string, filter: StringFilter): string {
   if ('match' in f) return `${key}=${regexToString(f['match'] as RegExp)}`;
   if ('notMatch' in f) return `${key}!=${regexToString(f['notMatch'] as RegExp)}`;
 
-  return '';
+  throw new TypeError(`Unsupported filter operator for field "${key}"`);
 }
 
 function serializeNumberFilter(key: string, filter: NumberFilter): string {
@@ -66,7 +67,7 @@ function serializeNumberFilter(key: string, filter: NumberFilter): string {
   if ('in' in f) return `${key}=${(f['in'] as number[]).join(',')}`;
   if ('notIn' in f) return `${key}!=${(f['notIn'] as number[]).join(',')}`;
 
-  return '';
+  throw new TypeError(`Unsupported filter operator for field "${key}"`);
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ function serializeNumberFilter(key: string, filter: NumberFilter): string {
  *
  * @param filters      The filter object (e.g. `{ name: { match: /fellowship/i } }`)
  * @param numberFields Set of field names that require numeric operators
+ * @throws {TypeError} when a field's filter value has no recognized operator
  */
 export function serializeFilters(
   filters: Record<string, unknown>,
@@ -91,7 +93,7 @@ export function serializeFilters(
       ? serializeNumberFilter(key, value as NumberFilter)
       : serializeStringFilter(key, value as StringFilter);
 
-    if (segment) parts.push(segment);
+    parts.push(segment);
   }
 
   return parts;

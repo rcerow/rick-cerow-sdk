@@ -8,22 +8,28 @@
 
 /** Base class for all errors that carry an HTTP status code. */
 export class LotrError extends Error {
+  /** Raw response body from the API, if available. */
+  readonly responseBody?: string;
+
   constructor(
     public readonly statusCode: number,
     message: string,
+    responseBody?: string,
   ) {
     super(message);
     this.name = 'LotrError';
+    if (responseBody) this.responseBody = responseBody;
   }
 }
 
 /** Thrown when the API key is missing or invalid (HTTP 401). */
 export class AuthenticationError extends LotrError {
-  constructor() {
+  constructor(responseBody?: string) {
     super(
       401,
       'Authentication failed: invalid or missing API key. ' +
         'Obtain one at https://the-one-api.dev/sign-up',
+      responseBody,
     );
     this.name = 'AuthenticationError';
   }
@@ -31,23 +37,24 @@ export class AuthenticationError extends LotrError {
 
 /** Thrown when a requested resource does not exist (HTTP 404 or empty result). */
 export class NotFoundError extends LotrError {
-  constructor(resource: string, id?: string) {
-    super(404, id ? `${resource} with id "${id}" was not found` : `${resource} not found`);
+  constructor(resource: string, id?: string, responseBody?: string) {
+    super(404, id ? `${resource} with id "${id}" was not found` : `${resource} not found`, responseBody);
     this.name = 'NotFoundError';
   }
 }
 
 /** Thrown when the API rate limit has been exceeded (HTTP 429). */
 export class RateLimitError extends LotrError {
-  constructor() {
-    super(429, 'Rate limit exceeded. Please wait before making another request.');
+  constructor(responseBody?: string) {
+    super(429, 'Rate limit exceeded. Please wait before making another request.', responseBody);
     this.name = 'RateLimitError';
   }
 }
 
 /**
  * Thrown when a successful HTTP response arrives but its body cannot be
- * parsed as JSON (e.g. the API returned HTML for a maintenance page).
+ * parsed as JSON (e.g. the API returned HTML for a maintenance page),
+ * or when the parsed envelope is missing required pagination fields.
  */
 export class ApiResponseError extends LotrError {
   constructor(statusCode: number, cause: unknown) {

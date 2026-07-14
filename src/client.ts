@@ -17,13 +17,14 @@ interface FetchClientConfig {
  * Default `HttpClient` implementation backed by the global `fetch`.
  *
  * Responsibilities:
+ *  - Validates that `apiKey` is non-empty at construction time.
  *  - Attaches `Authorization: Bearer <apiKey>` to every request.
  *  - Assembles URLs from a base + path + raw query-string segments.
  *  - Translates HTTP error statuses and transport failures into typed errors:
  *      401 → AuthenticationError
  *      404 → NotFoundError
  *      429 → RateLimitError
- *      other 4xx/5xx → LotrError (with statusCode)
+ *      other 4xx/5xx → LotrError (with statusCode and response body)
  *      malformed JSON body → ApiResponseError
  *      fetch() throws → NetworkError
  *
@@ -78,11 +79,11 @@ export class FetchClient implements HttpClient {
 
     switch (response.status) {
       case 401:
-        throw new AuthenticationError();
+        throw new AuthenticationError(body || undefined);
       case 404:
-        throw new NotFoundError('Resource');
+        throw new NotFoundError('Resource', undefined, body || undefined);
       case 429:
-        throw new RateLimitError();
+        throw new RateLimitError(body || undefined);
       default:
         throw new LotrError(response.status, body || `HTTP ${response.status}`);
     }

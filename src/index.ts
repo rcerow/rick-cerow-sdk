@@ -26,24 +26,18 @@ export type {
 } from './types.js';
 
 /**
- * Configuration for `LotrClient`.
+ * Configuration for `LotrClient`. Two mutually exclusive forms:
  *
- * In the common case, supply only `apiKey` (and optionally `baseUrl`).
- * Supply `httpClient` to inject a custom implementation — useful for tests
- * or scenarios that need non-default auth/transport behaviour.
+ * **Standard** — supply `apiKey` (and optionally `baseUrl`). The client
+ * creates a `FetchClient` internally.
+ *
+ * **Custom transport** — supply your own `HttpClient` implementation.
+ * It manages its own auth and transport; `apiKey` and `baseUrl` must be
+ * omitted. Useful for testing or non-standard auth schemes.
  */
-export interface ClientConfig {
-  /** Bearer token from https://the-one-api.dev/sign-up */
-  apiKey: string;
-  /** Override the API base URL. Defaults to `https://the-one-api.dev/v2`. */
-  baseUrl?: string;
-  /**
-   * Inject a custom HTTP client instead of the default fetch-based one.
-   * When provided, `apiKey` and `baseUrl` are forwarded to `FetchClient`
-   * but the injected client takes precedence for all requests.
-   */
-  httpClient?: HttpClient;
-}
+export type ClientConfig =
+  | { apiKey: string; baseUrl?: string; httpClient?: never }
+  | { httpClient: HttpClient; apiKey?: never; baseUrl?: never };
 
 /**
  * Entry point for the Lord of the Rings SDK.
@@ -61,10 +55,10 @@ export interface ClientConfig {
  * });
  * ```
  *
- * @example With an injected client (e.g. in tests)
+ * @example Custom transport (e.g. in tests)
  * ```ts
  * const mockHttp: HttpClient = { get: vi.fn().mockResolvedValue({ docs: [] }) };
- * const client = new LotrClient({ apiKey: 'test', httpClient: mockHttp });
+ * const client = new LotrClient({ httpClient: mockHttp });
  * ```
  */
 export class LotrClient {
@@ -75,10 +69,12 @@ export class LotrClient {
   readonly quotes: QuoteResource;
 
   constructor(config: ClientConfig) {
-    if (!config.apiKey || !config.apiKey.trim()) {
-      throw new TypeError('apiKey must be a non-empty string');
+    let http: HttpClient;
+    if (config.httpClient) {
+      http = config.httpClient;
+    } else {
+      http = new FetchClient({ apiKey: config.apiKey, baseUrl: config.baseUrl });
     }
-    const http: HttpClient = config.httpClient ?? new FetchClient(config);
     this.movies = new MovieResource(http);
     this.quotes = new QuoteResource(http);
   }

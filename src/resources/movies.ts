@@ -19,7 +19,7 @@ const MOVIE_NUMBER_FIELDS: ReadonlySet<string> = new Set([
   'rottenTomatoesScore',
 ]);
 
-// Quote fields are all strings (dialog, movie id, character id).
+// All quote fields (dialog, movie id, character id) are strings.
 const QUOTE_NUMBER_FIELDS: ReadonlySet<string> = new Set();
 
 export class MovieResource extends BaseResource {
@@ -29,28 +29,29 @@ export class MovieResource extends BaseResource {
 
   /** List all movies, with optional filtering, sorting, and pagination. */
   async list(options: ListOptions<MovieFilter> = {}): Promise<ListResult<Movie>> {
-    return this.listItems<Movie>(
-      '/movie',
-      options as ListOptions<Record<string, unknown>>,
-    );
+    return this.listItems<Movie, MovieFilter>('/movie', options);
   }
 
   /**
    * Fetch a single movie by its ID.
    *
+   * @throws {TypeError}     when `id` is blank.
    * @throws {NotFoundError} when no movie with that ID exists.
    */
   async get(id: string): Promise<Movie> {
+    const encodedId = this.encodeId(id, 'Movie ID');
+    const trimmedId = id.trim();
+
     let result: ApiListResponse<Movie>;
     try {
-      result = await this.client.get<ApiListResponse<Movie>>(`/movie/${encodeURIComponent(id)}`);
+      result = await this.client.get<ApiListResponse<Movie>>(`/movie/${encodedId}`);
     } catch (e) {
-      if (e instanceof NotFoundError) throw new NotFoundError('Movie', id);
+      if (e instanceof NotFoundError) throw new NotFoundError('Movie', trimmedId, e.responseBody);
       throw e;
     }
 
     const movie = result.docs[0];
-    if (!movie) throw new NotFoundError('Movie', id);
+    if (!movie) throw new NotFoundError('Movie', trimmedId);
     return movie;
   }
 
@@ -59,16 +60,13 @@ export class MovieResource extends BaseResource {
    * and pagination.
    *
    * @param movieId  The `_id` of the movie.
+   * @throws {TypeError} when `movieId` is blank.
    */
   async listQuotes(
     movieId: string,
     options: ListOptions<QuoteFilter> = {},
   ): Promise<ListResult<Quote>> {
-    const path = `/movie/${encodeURIComponent(movieId)}/quote`;
-    return this.listItems<Quote>(
-      path,
-      options as ListOptions<Record<string, unknown>>,
-      QUOTE_NUMBER_FIELDS,
-    );
+    const path = `/movie/${this.encodeId(movieId, 'Movie ID')}/quote`;
+    return this.listItems<Quote, QuoteFilter>(path, options, QUOTE_NUMBER_FIELDS);
   }
 }

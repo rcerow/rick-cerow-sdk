@@ -20,8 +20,22 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run check",
     "demo": "node --env-file=.env --import tsx/esm examples/demo.ts"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcerow/rick-cerow-sdk.git"
+  },
+  "homepage": "https://github.com/rcerow/rick-cerow-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/rcerow/rick-cerow-sdk/issues"
+  },
+  "keywords": ["lord-of-the-rings", "lotr", "sdk", "typescript", "the-one-api"],
+  "author": "Richard Cerow <richard.p.cerow@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsup": "^8.3.0",

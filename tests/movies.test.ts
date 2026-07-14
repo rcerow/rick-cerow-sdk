@@ -319,6 +319,14 @@ describe('movies.get()', () => {
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toContain('movie/id%2Fwith%2Fslashes');
   });
+
+  it('throws TypeError for an empty movie ID', async () => {
+    await expect(client.movies.get('')).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a whitespace-only movie ID', async () => {
+    await expect(client.movies.get('   ')).rejects.toThrow(TypeError);
+  });
 });
 
 // ── movies.listQuotes ────────────────────────────────────────────────────────
@@ -377,5 +385,46 @@ describe('movies.listQuotes()', () => {
 
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toContain('movie/id%2Fwith%2Fslashes/quote');
+  });
+
+  it('throws TypeError for an empty movieId', async () => {
+    await expect(client.movies.listQuotes('')).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a whitespace-only movieId', async () => {
+    await expect(client.movies.listQuotes('   ')).rejects.toThrow(TypeError);
+  });
+});
+
+// ── movies.list — pagination validation ──────────────────────────────────────
+
+describe('movies.list() — pagination validation', () => {
+  it('throws TypeError for a non-integer limit', async () => {
+    await expect(client.movies.list({ pagination: { limit: 2.5 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a zero limit', async () => {
+    await expect(client.movies.list({ pagination: { limit: 0 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a negative limit', async () => {
+    await expect(client.movies.list({ pagination: { limit: -1 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a zero page', async () => {
+    await expect(client.movies.list({ pagination: { page: 0 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a negative offset', async () => {
+    await expect(client.movies.list({ pagination: { offset: -1 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a fractional offset', async () => {
+    await expect(client.movies.list({ pagination: { offset: 1.5 } })).rejects.toThrow(TypeError);
+  });
+
+  it('accepts offset of zero', async () => {
+    mockOk(listResponse([FELLOWSHIP]));
+    await expect(client.movies.list({ pagination: { offset: 0 } })).resolves.toBeDefined();
   });
 });

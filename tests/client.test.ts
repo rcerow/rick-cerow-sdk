@@ -211,13 +211,18 @@ describe('LotrClient', () => {
     expect(() => new LotrClient({ apiKey: '   ' })).toThrow(TypeError);
   });
 
+  it('accepts a custom HttpClient without requiring an API key', () => {
+    const mockHttp: HttpClient = { get: vi.fn() };
+    expect(() => new LotrClient({ httpClient: mockHttp })).not.toThrow();
+  });
+
   it('uses an injected HttpClient for all requests', async () => {
     const mockHttp: HttpClient = {
       get: vi.fn().mockResolvedValue({
         docs: [], total: 0, limit: 1000, offset: 0, page: 1, pages: 1,
       }),
     };
-    const client = new LotrClient({ apiKey: 'k', httpClient: mockHttp });
+    const client = new LotrClient({ httpClient: mockHttp });
     await client.movies.list();
     expect(mockHttp.get).toHaveBeenCalledOnce();
     expect(mockHttp.get).toHaveBeenCalledWith('/movie', []);
@@ -229,7 +234,7 @@ describe('LotrClient', () => {
         docs: [], total: 0, limit: 1000, offset: 0, page: 1, pages: 1,
       }),
     };
-    const client = new LotrClient({ apiKey: 'k', httpClient: mockHttp });
+    const client = new LotrClient({ httpClient: mockHttp });
     await client.movies.list();
     expect(fetchSpy).not.toHaveBeenCalled();
   });

@@ -200,4 +200,12 @@ describe('quotes.get()', () => {
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toContain('quote/id%2Fwith%2Fslashes');
   });
+
+  it('throws TypeError for an empty quote ID', async () => {
+    await expect(client.quotes.get('')).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a whitespace-only quote ID', async () => {
+    await expect(client.quotes.get('   ')).rejects.toThrow(TypeError);
+  });
 });

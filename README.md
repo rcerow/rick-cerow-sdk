@@ -15,10 +15,23 @@ Covers the **movie** and **quote** endpoints with full TypeScript types, declara
 
 ## Installation
 
+Clone the repository and install dependencies:
+
 ```sh
-npm install lotr-sdk
-# or
-pnpm add lotr-sdk
+git clone https://github.com/rcerow/rick-cerow-sdk.git
+cd rick-cerow-sdk
+npm install
+npm run build
+```
+
+Then import directly from the built output or from source:
+
+```ts
+// from the built dist (after npm run build)
+import { LotrClient } from './dist/index.js';
+
+// or during development via tsx
+import { LotrClient } from './src/index.js';
 ```
 
 ---
@@ -26,13 +39,15 @@ pnpm add lotr-sdk
 ## Quick Start
 
 ```ts
-import { LotrClient } from 'lotr-sdk';
+import { LotrClient } from './src/index.js';
 
 const client = new LotrClient({ apiKey: process.env.LOTR_API_KEY! });
 
 // List all movies
 const movies = await client.movies.list();
-console.log(movies.docs);
+console.log(movies.items);       // Movie[]
+console.log(movies.total);       // number of results
+console.log(movies.hasNextPage); // boolean
 
 // Get a single movie
 const fellowship = await client.movies.get('5cd95395de30eff6ebccde5b');
@@ -54,10 +69,22 @@ const iconic = await client.quotes.list({
 
 ### `new LotrClient(config)`
 
+Two mutually exclusive configuration forms:
+
+**Standard** — provide your API key:
+
 | Option | Type | Description |
 |---|---|---|
 | `apiKey` | `string` | **Required.** Bearer token from the-one-api.dev |
 | `baseUrl` | `string` | Optional. Defaults to `https://the-one-api.dev/v2` |
+
+**Custom transport** — provide your own `HttpClient` implementation (manages its own auth):
+
+| Option | Type | Description |
+|---|---|---|
+| `httpClient` | `HttpClient` | Your implementation of the `HttpClient` interface |
+
+The two forms are mutually exclusive at the type level; combining `apiKey` and `httpClient` is a compile-time error.
 
 ---
 
@@ -74,14 +101,16 @@ const result = await client.movies.list({
   pagination: { limit: 5, page: 1 },
 });
 
-result.docs   // Movie[]
-result.total  // total matching count
-result.pages  // total pages
+result.items        // Movie[]
+result.total        // total matching count
+result.pages        // total pages
+result.hasNextPage  // true if more pages follow
+result.hasPrevPage  // true if not on the first page
 ```
 
 #### `movies.get(id)`
 
-Returns a single `Movie`. Throws `NotFoundError` if the ID does not exist.
+Returns a single `Movie`. Throws `NotFoundError` if the ID does not exist, `TypeError` if `id` is blank.
 
 ```ts
 const movie = await client.movies.get('5cd95395de30eff6ebccde5b');
@@ -117,7 +146,7 @@ const result = await client.quotes.list({
 
 #### `quotes.get(id)`
 
-Returns a single `Quote`. Throws `NotFoundError` if the ID does not exist.
+Returns a single `Quote`. Throws `NotFoundError` if the ID does not exist, `TypeError` if `id` is blank.
 
 ```ts
 const quote = await client.quotes.get('5cd96e05de30eff6ebcce7e9');
@@ -159,25 +188,44 @@ Every list method accepts a `filter` object. Each field can be:
 
 ## Error Handling
 
-All errors extend `LotrError` and carry a `statusCode`.
+HTTP-level errors extend `LotrError` and carry a `statusCode`. Transport failures throw `NetworkError`, which extends `Error` directly (no status code available).
 
 ```ts
-import { LotrError, AuthenticationError, NotFoundError } from 'lotr-sdk';
+import {
+  LotrError,
+  AuthenticationError,
+  NotFoundError,
+  RateLimitError,
+  NetworkError,
+} from './src/index.js';
 
 try {
   await client.movies.get(someId);
 } catch (e) {
   if (e instanceof NotFoundError) {
     console.error('Movie not found:', e.message);
+  } else if (e instanceof RateLimitError) {
+    console.error('Rate limit hit — wait before retrying');
   } else if (e instanceof AuthenticationError) {
     console.error('Invalid API key');
   } else if (e instanceof LotrError) {
     console.error(`API error ${e.statusCode}:`, e.message);
+  } else if (e instanceof NetworkError) {
+    console.error('Network failure:', e.message);
   } else {
     throw e; // unexpected — re-throw
   }
 }
 ```
+
+| Error class | When thrown |
+|---|---|
+| `AuthenticationError` | HTTP 401 — invalid or missing API key |
+| `NotFoundError` | HTTP 404, or resource ID not in the response |
+| `RateLimitError` | HTTP 429 — too many requests |
+| `ApiResponseError` | Successful HTTP but response body is not valid JSON |
+| `NetworkError` | `fetch()` threw — DNS failure, no internet, etc. |
+| `LotrError` | Any other HTTP error (base class for the above) |
 
 ---
 
@@ -186,17 +234,12 @@ try {
 The demo script exercises every endpoint and filter type against the live API.
 
 ```sh
-# 1. Set your API key
-export LOTR_API_KEY="your-key-here"
+# 1. Copy the env template and add your key
+cp .env.example .env
+# edit .env: LOTR_API_KEY=your-key-here
 
 # 2. Run
 npm run demo
-```
-
-Or directly with `tsx` without installing globally:
-
-```sh
-LOTR_API_KEY="your-key" npx tsx examples/demo.ts
 ```
 
 ---
@@ -206,8 +249,9 @@ LOTR_API_KEY="your-key" npx tsx examples/demo.ts
 Tests run entirely offline — no API key required.
 
 ```sh
-npm test             # run once
-npm run test:watch   # re-run on save
+npm test              # run once
+npm run test:watch    # re-run on save
+npm run test:coverage # with coverage report
 ```
 
 ---
@@ -215,8 +259,9 @@ npm run test:watch   # re-run on save
 ## Building
 
 ```sh
-npm run build    # emits ESM to dist/
+npm run build     # emits ESM to dist/
 npm run typecheck # type-check without emitting
+npm run check     # typecheck + test + build in sequence
 ```
 
 ---
@@ -243,11 +288,13 @@ interface Quote {
 }
 
 interface ListResult<T> {
-  docs: T[];
+  items: T[];
   total: number;
   limit: number;
   offset: number;
   page: number;
   pages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 ```

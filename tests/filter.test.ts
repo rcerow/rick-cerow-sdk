@@ -132,30 +132,31 @@ describe('serializeFilters — URL encoding edge cases', () => {
 });
 
 describe('serializeFilters — invalid filter combinations', () => {
-  it('silently drops a numeric operator applied to a string field', () => {
-    // { gt: 50 } is a NumberFilter shape, but 'name' is not in NUMBER_FIELDS —
-    // serializeStringFilter finds no matching branch and returns '', so the
-    // filter is omitted rather than producing a malformed query segment
-    const result = serializeFilters(
-      { name: { gt: 50 } as unknown as string },
-      NO_NUMBER_FIELDS,
-    );
-    expect(result).toEqual([]);
+  it('throws TypeError for a numeric operator applied to a string field', () => {
+    // { gt: 50 } has no branch in serializeStringFilter — throws rather than
+    // silently omitting, since silent omission produces plausible-but-wrong results
+    expect(() =>
+      serializeFilters({ name: { gt: 50 } as unknown as string }, NO_NUMBER_FIELDS),
+    ).toThrow(TypeError);
   });
 
-  it('silently drops a string operator applied to a number field', () => {
-    // { match: /foo/ } is a StringFilter shape, but 'budget' is in NUMBER_FIELDS —
-    // serializeNumberFilter finds no matching branch and returns ''
-    const result = serializeFilters(
-      { budget: { match: /foo/ } as unknown as number },
-      NUMBER_FIELDS,
-    );
-    expect(result).toEqual([]);
+  it('throws TypeError for a string operator applied to a number field', () => {
+    // { match: /foo/ } has no branch in serializeNumberFilter
+    expect(() =>
+      serializeFilters({ budget: { match: /foo/ } as unknown as number }, NUMBER_FIELDS),
+    ).toThrow(TypeError);
   });
 
-  it('silently drops an unrecognised filter shape (empty object)', () => {
-    const result = serializeFilters({ name: {} as unknown as string }, NO_NUMBER_FIELDS);
-    expect(result).toEqual([]);
+  it('throws TypeError for an unrecognised filter shape (empty object)', () => {
+    expect(() =>
+      serializeFilters({ name: {} as unknown as string }, NO_NUMBER_FIELDS),
+    ).toThrow(TypeError);
+  });
+
+  it('TypeError message names the offending field', () => {
+    expect(() =>
+      serializeFilters({ runtimeInMinutes: {} as unknown as number }, NUMBER_FIELDS),
+    ).toThrow(/runtimeInMinutes/);
   });
 });
 

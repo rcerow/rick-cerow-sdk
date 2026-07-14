@@ -1,8 +1,33 @@
+import { ApiResponseError } from '../errors.js';
 import type { HttpClient } from '../http-client.js';
-import type { ApiListResponse, ListOptions, ListResult } from '../types.js';
+import type { ApiListResponse, ListOptions, ListResult, PaginationOptions } from '../types.js';
 import { serializeFilters } from '../filter.js';
 
+// Shared constant so numberFields() doesn't allocate a new Set per call.
+const EMPTY_FIELDS: ReadonlySet<string> = new Set();
+
+function validatePagination({ limit, page, offset }: PaginationOptions): void {
+  if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
+    throw new TypeError(`pagination.limit must be a positive integer, got ${limit}`);
+  }
+  if (page !== undefined && (!Number.isInteger(page) || page <= 0)) {
+    throw new TypeError(`pagination.page must be a positive integer, got ${page}`);
+  }
+  if (offset !== undefined && (!Number.isInteger(offset) || offset < 0)) {
+    throw new TypeError(`pagination.offset must be a non-negative integer, got ${offset}`);
+  }
+}
+
 function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
+  if (
+    !raw ||
+    !Array.isArray(raw.docs) ||
+    typeof raw.total !== 'number' ||
+    typeof raw.page !== 'number' ||
+    typeof raw.pages !== 'number'
+  ) {
+    throw new ApiResponseError(200, new Error('Malformed list response: missing required pagination fields'));
+  }
   return {
     items: raw.docs,
     total: raw.total,
@@ -19,40 +44,49 @@ function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
  * Base class for all resource types.
  *
  * Subclasses declare which fields are numeric (to pick the right serializer)
- * and inherit `buildQuery` / `listItems` / `getItem` helpers.
- *
- * Adding a new endpoint means extending this class and overriding
- * `numberFields` to declare any numeric filterable fields.
+ * and inherit `encodeId`, `buildQuery`, and `listItems` helpers.
  */
 export abstract class BaseResource {
   constructor(protected readonly client: HttpClient) {}
 
   /**
    * Override to declare which filter fields accept numeric operators
-   * (gt, gte, lt, lte, etc.).  All other fields are treated as strings.
+   * (gt, gte, lt, lte, etc.). All other fields are treated as strings.
    */
   protected numberFields(): ReadonlySet<string> {
-    return new Set();
+    return EMPTY_FIELDS;
+  }
+
+  /**
+   * Normalises and URL-encodes a resource ID.
+   *
+   * @throws {TypeError} when `id` is blank after trimming.
+   */
+  protected encodeId(id: string, label: string): string {
+    const normalized = id.trim();
+    if (!normalized) throw new TypeError(`${label} must be a non-empty string`);
+    return encodeURIComponent(normalized);
   }
 
   /**
    * Converts a `ListOptions` object into raw query-string segments.
    *
-   * @param options       Pagination, sort, and filter options.
-   * @param numberFields  Optional override for which fields are numeric.
-   *                      Defaults to `this.numberFields()`.
+   * @throws {TypeError} when pagination values are not valid positive integers.
    */
-  protected buildQuery<TFilter extends Record<string, unknown>>(
+  protected buildQuery<TFilter>(
     options: ListOptions<TFilter> = {},
     numberFields?: ReadonlySet<string>,
   ): string[] {
     const parts: string[] = [];
     const fields = numberFields ?? this.numberFields();
 
-    const { limit, page, offset } = options.pagination ?? {};
-    if (limit !== undefined) parts.push(`limit=${limit}`);
-    if (page !== undefined) parts.push(`page=${page}`);
-    if (offset !== undefined) parts.push(`offset=${offset}`);
+    if (options.pagination) {
+      validatePagination(options.pagination);
+      const { limit, page, offset } = options.pagination;
+      if (limit !== undefined) parts.push(`limit=${limit}`);
+      if (page !== undefined) parts.push(`page=${page}`);
+      if (offset !== undefined) parts.push(`offset=${offset}`);
+    }
 
     if (options.sort) {
       const { by, order = 'asc' } = options.sort;
@@ -70,9 +104,9 @@ export abstract class BaseResource {
     return parts;
   }
 
-  protected async listItems<T>(
+  protected async listItems<T, TFilter = Record<string, unknown>>(
     path: string,
-    options: ListOptions<Record<string, unknown>> = {},
+    options: ListOptions<TFilter> = {},
     numberFields?: ReadonlySet<string>,
   ): Promise<ListResult<T>> {
     const query = this.buildQuery(options, numberFields);
