@@ -21,7 +21,7 @@ export class FetchClient implements HttpClient {
     if (!apiKey || !apiKey.trim()) {
       throw new TypeError('apiKey must be a non-empty string');
     }
-    this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
     this.headers = {
       Authorization: `Bearer ${apiKey}`,
       Accept: 'application/json',

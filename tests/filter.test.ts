@@ -158,6 +158,27 @@ describe('serializeFilters — invalid filter combinations', () => {
       serializeFilters({ runtimeInMinutes: {} as unknown as number }, NUMBER_FIELDS),
     ).toThrow(/runtimeInMinutes/);
   });
+
+  it('throws TypeError for a number filter with multiple operators', () => {
+    expect(() =>
+      serializeFilters({ budget: { gt: 50, lt: 100 } as unknown as number }, NUMBER_FIELDS),
+    ).toThrow(TypeError);
+  });
+
+  it('throws TypeError for a string filter with multiple operators', () => {
+    expect(() =>
+      serializeFilters({ name: { not: 'x', match: /y/ } as unknown as string }, NO_NUMBER_FIELDS),
+    ).toThrow(TypeError);
+  });
+
+  it.each([
+    ['string in',    { name: { in: [] } },    NO_NUMBER_FIELDS],
+    ['string notIn', { name: { notIn: [] } }, NO_NUMBER_FIELDS],
+    ['number in',    { budget: { in: [] } },  NUMBER_FIELDS],
+    ['number notIn', { budget: { notIn: [] } }, NUMBER_FIELDS],
+  ] as const)('throws TypeError for an empty %s array', (_label, filter, fields) => {
+    expect(() => serializeFilters(filter as Record<string, unknown>, fields)).toThrow(TypeError);
+  });
 });
 
 describe('serializeFilters — multiple fields', () => {

@@ -91,6 +91,16 @@ describe('FetchClient', () => {
     expect(url).toBe('https://example.com/v2/movie');
   });
 
+  it('normalises multiple consecutive trailing slashes in the baseUrl', async () => {
+    fetchSpy.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+    const client = new FetchClient({ apiKey: 'k', baseUrl: 'https://example.com/v2///' });
+    await client.get('/movie');
+
+    const [url] = fetchSpy.mock.calls[0] as [string, ...unknown[]];
+    expect(url).toBe('https://example.com/v2/movie');
+  });
+
   it('throws AuthenticationError on 401', async () => {
     vi.stubGlobal('fetch', mockFetch(401, 'Unauthorized'));
     const client = new FetchClient({ apiKey: 'bad-key' });

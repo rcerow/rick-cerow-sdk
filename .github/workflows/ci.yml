@@ -18,3 +18,4 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm pack --dry-run
+      - run: node -e "import('./dist/index.js').then(m => { const keys = Object.keys(m); ['LotrClient','LotrError','NotFoundError','AuthenticationError','RateLimitError','ApiResponseError','NetworkError'].forEach(k => { if (!keys.includes(k)) throw new Error(k + ' not exported'); }); console.log('smoke ok:', keys.join(', ')); })"

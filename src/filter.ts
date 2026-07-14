@@ -8,6 +8,9 @@
 
 import type { NumberFilter, StringFilter } from './types.js';
 
+const STRING_OPS = ['exists', 'not', 'in', 'notIn', 'match', 'notMatch'] as const;
+const NUMBER_OPS = ['not', 'gt', 'gte', 'lt', 'lte', 'in', 'notIn'] as const;
+
 function regexToString(r: RegExp): string {
   const s = r.toString();
   const m = /^\/(.*)\/([gimsuy]*)$/.exec(s);
@@ -16,35 +19,50 @@ function regexToString(r: RegExp): string {
   return `/${encodeURIComponent(pattern!)}/${flags}`;
 }
 
+function requireSingleOp(key: string, f: Record<string, unknown>, ops: readonly string[]): string {
+  const found = ops.filter(op => op in f);
+  if (found.length === 0) throw new TypeError(`Unsupported filter operator for field "${key}"`);
+  if (found.length > 1) {
+    throw new TypeError(
+      `Filter for field "${key}" must contain exactly one operator, got: ${found.join(', ')}`,
+    );
+  }
+  return found[0]!;
+}
+
 function serializeStringFilter(key: string, filter: StringFilter): string {
   if (typeof filter === 'string') return `${key}=${encodeURIComponent(filter)}`;
 
   const f = filter as Record<string, unknown>;
+  const op = requireSingleOp(key, f, STRING_OPS);
 
-  if ('exists' in f) return (f['exists'] as boolean) ? key : `!${key}`;
-  if ('not' in f)    return `${key}!=${encodeURIComponent(f['not'] as string)}`;
-  if ('in' in f)     return `${key}=${(f['in'] as string[]).map(encodeURIComponent).join(',')}`;
-  if ('notIn' in f)  return `${key}!=${(f['notIn'] as string[]).map(encodeURIComponent).join(',')}`;
-  if ('match' in f)    return `${key}=${regexToString(f['match'] as RegExp)}`;
-  if ('notMatch' in f) return `${key}!=${regexToString(f['notMatch'] as RegExp)}`;
+  if (op === 'exists') return (f['exists'] as boolean) ? key : `!${key}`;
+  if (op === 'not')    return `${key}!=${encodeURIComponent(f['not'] as string)}`;
+  if (op === 'match')    return `${key}=${regexToString(f['match'] as RegExp)}`;
+  if (op === 'notMatch') return `${key}!=${regexToString(f['notMatch'] as RegExp)}`;
 
-  throw new TypeError(`Unsupported filter operator for field "${key}"`);
+  const arr = f[op] as string[];
+  if (arr.length === 0) throw new TypeError(`Filter "${key}.${op}" must not be empty`);
+  const encoded = arr.map(encodeURIComponent).join(',');
+  return op === 'in' ? `${key}=${encoded}` : `${key}!=${encoded}`;
 }
 
 function serializeNumberFilter(key: string, filter: NumberFilter): string {
   if (typeof filter === 'number') return `${key}=${filter}`;
 
   const f = filter as Record<string, unknown>;
+  const op = requireSingleOp(key, f, NUMBER_OPS);
 
-  if ('not' in f)   return `${key}!=${f['not'] as number}`;
-  if ('gt' in f)    return `${key}>${f['gt'] as number}`;
-  if ('gte' in f)   return `${key}>=${f['gte'] as number}`;
-  if ('lt' in f)    return `${key}<${f['lt'] as number}`;
-  if ('lte' in f)   return `${key}<=${f['lte'] as number}`;
-  if ('in' in f)    return `${key}=${(f['in'] as number[]).join(',')}`;
-  if ('notIn' in f) return `${key}!=${(f['notIn'] as number[]).join(',')}`;
+  if (op === 'not') return `${key}!=${f['not'] as number}`;
+  if (op === 'gt')  return `${key}>${f['gt'] as number}`;
+  if (op === 'gte') return `${key}>=${f['gte'] as number}`;
+  if (op === 'lt')  return `${key}<${f['lt'] as number}`;
+  if (op === 'lte') return `${key}<=${f['lte'] as number}`;
 
-  throw new TypeError(`Unsupported filter operator for field "${key}"`);
+  const arr = f[op] as number[];
+  if (arr.length === 0) throw new TypeError(`Filter "${key}.${op}" must not be empty`);
+  const joined = arr.join(',');
+  return op === 'in' ? `${key}=${joined}` : `${key}!=${joined}`;
 }
 
 /**
