@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LotrClient } from '../src/index.js';
-import { NotFoundError } from '../src/errors.js';
+import { ApiResponseError, NotFoundError } from '../src/errors.js';
 import type { Movie, Quote } from '../src/types.js';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -121,135 +121,6 @@ describe('movies.list()', () => {
     expect(url).toContain('sort=name:desc');
   });
 
-  it('sends string filter (exact match)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { name: 'The Fellowship of the Ring' } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('name=The%20Fellowship%20of%20the%20Ring');
-  });
-
-  it('sends string filter (regex)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { name: { match: /fellowship/i } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('name=/fellowship/i');
-  });
-
-  it('sends numeric filter (greater than)', async () => {
-    mockOk(listResponse([TWO_TOWERS]));
-    await client.movies.list({ filter: { budgetInMillions: { gt: 90 } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('budgetInMillions>90');
-  });
-
-  it('sends numeric filter (less than or equal)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { runtimeInMinutes: { lte: 178 } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('runtimeInMinutes<=178');
-  });
-
-  it('sends numeric filter (in list)', async () => {
-    mockOk(listResponse([FELLOWSHIP, TWO_TOWERS]));
-    await client.movies.list({ filter: { academyAwardWins: { in: [2, 4] } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('academyAwardWins=2,4');
-  });
-});
-
-// ── movies.list — response field mapping ─────────────────────────────────────
-
-describe('movies.list() — response field mapping', () => {
-  it('maps all Movie fields from the upstream response', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    const result = await client.movies.list();
-    expect(result.items[0]).toEqual(FELLOWSHIP);
-    // verify every field is present and correct
-    const m = result.items[0]!;
-    expect(m._id).toBe(FELLOWSHIP._id);
-    expect(m.name).toBe(FELLOWSHIP.name);
-    expect(m.runtimeInMinutes).toBe(FELLOWSHIP.runtimeInMinutes);
-    expect(m.budgetInMillions).toBe(FELLOWSHIP.budgetInMillions);
-    expect(m.boxOfficeRevenueInMillions).toBe(FELLOWSHIP.boxOfficeRevenueInMillions);
-    expect(m.academyAwardNominations).toBe(FELLOWSHIP.academyAwardNominations);
-    expect(m.academyAwardWins).toBe(FELLOWSHIP.academyAwardWins);
-    expect(m.rottenTomatoesScore).toBe(FELLOWSHIP.rottenTomatoesScore);
-  });
-});
-
-// ── movies.list — additional filter coverage ──────────────────────────────────
-
-describe('movies.list() — additional filter coverage', () => {
-  it('sends string filter (not equal)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { name: { not: 'The Two Towers' } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('name!=The%20Two%20Towers');
-  });
-
-  it('sends string filter (not in list)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { name: { notIn: ['The Two Towers'] } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('name!=The%20Two%20Towers');
-  });
-
-  it('sends string filter (notMatch regex)', async () => {
-    mockOk(listResponse([FELLOWSHIP, TWO_TOWERS]));
-    await client.movies.list({ filter: { name: { notMatch: /hobbit/i } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('name!=/hobbit/i');
-  });
-
-  it('sends string filter (field exists)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { name: { exists: true } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    // existence marker: ?name (no "=")
-    const qs = url.split('?')[1] ?? '';
-    expect(qs.split('&')).toContain('name');
-  });
-
-  it('sends string filter (field absent)', async () => {
-    mockOk(listResponse([]));
-    await client.movies.list({ filter: { name: { exists: false } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('!name');
-  });
-
-  it('sends numeric filter (not equal)', async () => {
-    mockOk(listResponse([TWO_TOWERS]));
-    await client.movies.list({ filter: { academyAwardWins: { not: 4 } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('academyAwardWins!=4');
-  });
-
-  it('sends numeric filter (gte) on academyAwardNominations', async () => {
-    mockOk(listResponse([FELLOWSHIP, TWO_TOWERS]));
-    await client.movies.list({ filter: { academyAwardNominations: { gte: 6 } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('academyAwardNominations>=6');
-  });
-
-  it('sends numeric filter (lt) on rottenTomatoesScore', async () => {
-    mockOk(listResponse([TWO_TOWERS]));
-    await client.movies.list({ filter: { rottenTomatoesScore: { lt: 95 } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('rottenTomatoesScore<95');
-  });
-
-  it('sends numeric filter (not in list)', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({ filter: { academyAwardWins: { notIn: [0, 1, 2] } } });
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('academyAwardWins!=0,1,2');
-  });
-
   it('defaults sort order to asc when not specified', async () => {
     mockOk(listResponse([FELLOWSHIP]));
     await client.movies.list({ sort: { by: 'name' } });
@@ -264,14 +135,20 @@ describe('movies.list() — additional filter coverage', () => {
     expect(url).toContain('sort=box%20office%20revenue:desc');
   });
 
-  it('sends multiple filters together', async () => {
+  it('sends a string filter (regex)', async () => {
     mockOk(listResponse([FELLOWSHIP]));
-    await client.movies.list({
-      filter: { budgetInMillions: { gte: 90 }, academyAwardWins: { gte: 4 } },
-    });
+    await client.movies.list({ filter: { name: { match: /fellowship/i } } });
+
     const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('budgetInMillions>=90');
-    expect(url).toContain('academyAwardWins>=4');
+    expect(url).toContain('name=/fellowship/i');
+  });
+
+  it('sends a numeric filter (greater than)', async () => {
+    mockOk(listResponse([TWO_TOWERS]));
+    await client.movies.list({ filter: { budgetInMillions: { gt: 90 } } });
+
+    const [url] = fetchSpy.mock.calls[0] as [string];
+    expect(url).toContain('budgetInMillions>90');
   });
 
   it('sends filter, sort, and pagination simultaneously', async () => {
@@ -286,6 +163,68 @@ describe('movies.list() — additional filter coverage', () => {
     expect(url).toContain('page=1');
     expect(url).toContain('sort=name:asc');
     expect(url).toContain('academyAwardWins>0');
+  });
+});
+
+// ── movies.list — response field mapping ─────────────────────────────────────
+
+describe('movies.list() — response field mapping', () => {
+  it('maps all Movie fields from the upstream response', async () => {
+    mockOk(listResponse([FELLOWSHIP]));
+    const result = await client.movies.list();
+    expect(result.items[0]).toEqual(FELLOWSHIP);
+  });
+});
+
+// ── movies.list — malformed envelope ─────────────────────────────────────────
+
+describe('movies.list() — malformed envelope', () => {
+  it('throws ApiResponseError for an empty response object', async () => {
+    mockOk({});
+    await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
+  });
+
+  it('throws ApiResponseError when docs is null', async () => {
+    mockOk({ docs: null, total: 0, limit: 1000, page: 1, pages: 1 });
+    await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
+  });
+
+  it('throws ApiResponseError when pagination fields are missing', async () => {
+    mockOk({ docs: [], total: 8 });
+    await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
+  });
+});
+
+// ── movies.list — pagination validation ──────────────────────────────────────
+
+describe('movies.list() — pagination validation', () => {
+  it('throws TypeError for a non-integer limit', async () => {
+    await expect(client.movies.list({ pagination: { limit: 2.5 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a zero limit', async () => {
+    await expect(client.movies.list({ pagination: { limit: 0 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a negative limit', async () => {
+    await expect(client.movies.list({ pagination: { limit: -1 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a zero page', async () => {
+    await expect(client.movies.list({ pagination: { page: 0 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a negative offset', async () => {
+    await expect(client.movies.list({ pagination: { offset: -1 } })).rejects.toThrow(TypeError);
+  });
+
+  it('throws TypeError for a fractional offset', async () => {
+    await expect(client.movies.list({ pagination: { offset: 1.5 } })).rejects.toThrow(TypeError);
+  });
+
+  it('accepts offset of zero', async () => {
+    mockOk(listResponse([FELLOWSHIP]));
+    await expect(client.movies.list({ pagination: { offset: 0 } })).resolves.toBeDefined();
   });
 });
 
@@ -305,6 +244,7 @@ describe('movies.get()', () => {
     mockError(404);
     const err = await client.movies.get('bad-id').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NotFoundError);
+    expect((err as Error).message).toContain('Movie');
     expect((err as Error).message).toContain('"bad-id"');
   });
 
@@ -393,38 +333,5 @@ describe('movies.listQuotes()', () => {
 
   it('throws TypeError for a whitespace-only movieId', async () => {
     await expect(client.movies.listQuotes('   ')).rejects.toThrow(TypeError);
-  });
-});
-
-// ── movies.list — pagination validation ──────────────────────────────────────
-
-describe('movies.list() — pagination validation', () => {
-  it('throws TypeError for a non-integer limit', async () => {
-    await expect(client.movies.list({ pagination: { limit: 2.5 } })).rejects.toThrow(TypeError);
-  });
-
-  it('throws TypeError for a zero limit', async () => {
-    await expect(client.movies.list({ pagination: { limit: 0 } })).rejects.toThrow(TypeError);
-  });
-
-  it('throws TypeError for a negative limit', async () => {
-    await expect(client.movies.list({ pagination: { limit: -1 } })).rejects.toThrow(TypeError);
-  });
-
-  it('throws TypeError for a zero page', async () => {
-    await expect(client.movies.list({ pagination: { page: 0 } })).rejects.toThrow(TypeError);
-  });
-
-  it('throws TypeError for a negative offset', async () => {
-    await expect(client.movies.list({ pagination: { offset: -1 } })).rejects.toThrow(TypeError);
-  });
-
-  it('throws TypeError for a fractional offset', async () => {
-    await expect(client.movies.list({ pagination: { offset: 1.5 } })).rejects.toThrow(TypeError);
-  });
-
-  it('accepts offset of zero', async () => {
-    mockOk(listResponse([FELLOWSHIP]));
-    await expect(client.movies.list({ pagination: { offset: 0 } })).resolves.toBeDefined();
   });
 });

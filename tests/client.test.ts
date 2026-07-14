@@ -188,6 +188,59 @@ describe('FetchClient', () => {
       expect((err as Error).message).not.toContain('super-secret-key');
     });
   });
+
+  // ── Error contract ────────────────────────────────────────────────────────
+
+  describe('error contract', () => {
+    it('passes the API response body through AuthenticationError', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false, status: 401,
+        json: () => Promise.reject(new Error()),
+        text: () => Promise.resolve('Unauthorized: token rejected'),
+      }));
+      const client = new FetchClient({ apiKey: 'k' });
+      const err = await client.get('/movie').catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(AuthenticationError);
+      expect((err as AuthenticationError).responseBody).toBe('Unauthorized: token rejected');
+    });
+
+    it('passes the API response body through NotFoundError', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false, status: 404,
+        json: () => Promise.reject(new Error()),
+        text: () => Promise.resolve('No document with that ID'),
+      }));
+      const client = new FetchClient({ apiKey: 'k' });
+      const err = await client.get('/movie/x').catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(NotFoundError);
+      expect((err as NotFoundError).responseBody).toBe('No document with that ID');
+    });
+
+    it('passes the API response body through RateLimitError', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false, status: 429,
+        json: () => Promise.reject(new Error()),
+        text: () => Promise.resolve('Rate limit exceeded'),
+      }));
+      const client = new FetchClient({ apiKey: 'k' });
+      const err = await client.get('/movie').catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(RateLimitError);
+      expect((err as RateLimitError).responseBody).toBe('Rate limit exceeded');
+    });
+
+    it('falls back to "HTTP <status>" when response.text() rejects', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false, status: 503,
+        json: () => Promise.reject(new Error()),
+        text: () => Promise.reject(new Error('body read failed')),
+      }));
+      const client = new FetchClient({ apiKey: 'k' });
+      const err = await client.get('/movie').catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(LotrError);
+      expect((err as LotrError).statusCode).toBe(503);
+      expect((err as LotrError).message).toBe('HTTP 503');
+    });
+  });
 });
 
 // ── LotrClient ────────────────────────────────────────────────────────────────
@@ -237,5 +290,29 @@ describe('LotrClient', () => {
     const client = new LotrClient({ httpClient: mockHttp });
     await client.movies.list();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('routes both movies and quotes through the same injected HttpClient', async () => {
+    const emptyList = { docs: [], total: 0, limit: 1000, offset: 0, page: 1, pages: 1 };
+    const mockHttp: HttpClient = {
+      get: vi.fn().mockResolvedValue(emptyList),
+    };
+    const client = new LotrClient({ httpClient: mockHttp });
+    await client.movies.list();
+    await client.quotes.list();
+    expect(mockHttp.get).toHaveBeenCalledTimes(2);
+    const calls = (mockHttp.get as ReturnType<typeof vi.fn>).mock.calls as [string][];
+    expect(calls[0]![0]).toBe('/movie');
+    expect(calls[1]![0]).toBe('/quote');
+  });
+
+  it('propagates errors from the injected client unchanged', async () => {
+    const transportError = new Error('connection refused');
+    const mockHttp: HttpClient = {
+      get: vi.fn().mockRejectedValue(transportError),
+    };
+    const client = new LotrClient({ httpClient: mockHttp });
+    const err = await client.movies.list().catch((e: unknown) => e);
+    expect(err).toBe(transportError);
   });
 });

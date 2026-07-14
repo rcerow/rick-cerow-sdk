@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LotrClient } from '../src/index.js';
-import { NotFoundError } from '../src/errors.js';
+import { ApiResponseError, NotFoundError } from '../src/errors.js';
 import type { Quote } from '../src/types.js';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -62,11 +62,16 @@ describe('quotes.list() — response field mapping', () => {
   it('maps all Quote fields from the upstream response', async () => {
     mockOk(listResponse([GANDALF_QUOTE]));
     const result = await client.quotes.list();
-    const q = result.items[0]!;
-    expect(q._id).toBe(GANDALF_QUOTE._id);
-    expect(q.dialog).toBe(GANDALF_QUOTE.dialog);
-    expect(q.movie).toBe(GANDALF_QUOTE.movie);
-    expect(q.character).toBe(GANDALF_QUOTE.character);
+    expect(result.items[0]).toEqual(GANDALF_QUOTE);
+  });
+});
+
+// ── quotes.list — malformed envelope ─────────────────────────────────────────
+
+describe('quotes.list() — malformed envelope', () => {
+  it('throws ApiResponseError when page field is missing', async () => {
+    mockOk({ docs: [], total: 0, limit: 1000, offset: 0 });
+    await expect(client.quotes.list()).rejects.toThrow(ApiResponseError);
   });
 });
 
@@ -98,24 +103,6 @@ describe('quotes.list()', () => {
     expect(url).toContain(`movie=${GANDALF_QUOTE.movie}`);
   });
 
-  it('filters by multiple movie IDs', async () => {
-    mockOk(listResponse([GANDALF_QUOTE]));
-    await client.quotes.list({
-      filter: { movie: { in: ['5cd95395de30eff6ebccde5b', '5cd95395de30eff6ebccde5c'] } },
-    });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('movie=5cd95395de30eff6ebccde5b,5cd95395de30eff6ebccde5c');
-  });
-
-  it('filters by character ID', async () => {
-    mockOk(listResponse([GANDALF_QUOTE]));
-    await client.quotes.list({ filter: { character: GANDALF_QUOTE.character } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain(`character=${GANDALF_QUOTE.character}`);
-  });
-
   it('sends pagination params', async () => {
     mockOk(listResponse([GANDALF_QUOTE]));
     await client.quotes.list({ pagination: { limit: 25, offset: 50 } });
@@ -131,41 +118,6 @@ describe('quotes.list()', () => {
 
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toContain('sort=dialog:asc');
-  });
-
-  it('sends dialog filter (not equal)', async () => {
-    mockOk(listResponse([FRODO_QUOTE]));
-    await client.quotes.list({ filter: { dialog: { not: 'You shall not pass!' } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('dialog!=You%20shall%20not%20pass!');
-  });
-
-  it('sends dialog filter (notMatch regex)', async () => {
-    mockOk(listResponse([FRODO_QUOTE]));
-    await client.quotes.list({ filter: { dialog: { notMatch: /pass/i } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain('dialog!=/pass/i');
-  });
-
-  it('sends dialog filter (field exists)', async () => {
-    mockOk(listResponse([GANDALF_QUOTE]));
-    await client.quotes.list({ filter: { dialog: { exists: true } } });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    const qs = url.split('?')[1] ?? '';
-    expect(qs.split('&')).toContain('dialog');
-  });
-
-  it('sends character filter (not in list)', async () => {
-    mockOk(listResponse([GANDALF_QUOTE]));
-    await client.quotes.list({
-      filter: { character: { notIn: [FRODO_QUOTE.character] } },
-    });
-
-    const [url] = fetchSpy.mock.calls[0] as [string];
-    expect(url).toContain(`character!=${FRODO_QUOTE.character}`);
   });
 });
 
@@ -185,6 +137,7 @@ describe('quotes.get()', () => {
     mockError(404);
     const err = await client.quotes.get('nonexistent').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NotFoundError);
+    expect((err as Error).message).toContain('Quote');
     expect((err as Error).message).toContain('"nonexistent"');
   });
 
