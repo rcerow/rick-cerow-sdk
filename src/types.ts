@@ -23,8 +23,8 @@ export interface Quote {
 // ── Response shapes ──────────────────────────────────────────────────────────
 
 /**
- * Raw paginated envelope as returned by the API.
- * Internal — not part of the public SDK surface.
+ * Upstream pagination envelope returned by the API.
+ * Used internally by resource implementations; not re-exported from the package entry point.
  */
 export interface ApiListResponse<T> {
   docs: T[];
@@ -53,19 +53,7 @@ export interface ListResult<T> {
 
 /**
  * Filter operators for string fields.
- *
- * @example
- * // Exact match
- * { name: 'The Two Towers' }
- *
- * // Regex match (case-insensitive)
- * { name: { match: /fellowship/i } }
- *
- * // Exclude specific values
- * { name: { notIn: ['The Two Towers', 'The Return of the King'] } }
- *
- * // Check that the field is present
- * { name: { exists: true } }
+ * Example: `{ match: /fellowship/i }`, `{ in: ['A', 'B'] }`, `{ exists: true }`
  */
 export type StringFilter =
   | string
@@ -78,17 +66,7 @@ export type StringFilter =
 
 /**
  * Filter operators for numeric fields.
- *
- * @example
- * // Exact match
- * { budgetInMillions: 94 }
- *
- * // Range
- * { budgetInMillions: { gt: 50 } }
- * { runtimeInMinutes: { lte: 180 } }
- *
- * // In list
- * { academyAwardWins: { in: [4, 11] } }
+ * Example: `{ gt: 90 }`, `{ lte: 180 }`, `{ in: [4, 11] }`
  */
 export type NumberFilter =
   | number

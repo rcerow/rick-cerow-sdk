@@ -3,7 +3,6 @@ import type { HttpClient } from '../http-client.js';
 import type { ApiListResponse, ListOptions, ListResult, PaginationOptions } from '../types.js';
 import { serializeFilters } from '../filter.js';
 
-// Shared constant so numberFields() doesn't allocate a new Set per call.
 const EMPTY_FIELDS: ReadonlySet<string> = new Set();
 
 function validatePagination({ limit, page, offset }: PaginationOptions): void {
@@ -40,39 +39,28 @@ function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
   };
 }
 
-/**
- * Base class for all resource types.
- *
- * Subclasses declare which fields are numeric (to pick the right serializer)
- * and inherit `encodeId`, `buildQuery`, and `listItems` helpers.
- */
+/** Shared list-query behaviour for API resources. */
 export abstract class BaseResource {
   constructor(protected readonly client: HttpClient) {}
 
   /**
-   * Override to declare which filter fields accept numeric operators
-   * (gt, gte, lt, lte, etc.). All other fields are treated as strings.
+   * Override to declare which typed filter fields use numeric operators
+   * (gt, gte, lt, lte, in, notIn). Known typed fields not in this set
+   * use string serialization; the safety guarantee comes from TypeScript,
+   * not runtime enforcement.
    */
   protected numberFields(): ReadonlySet<string> {
     return EMPTY_FIELDS;
   }
 
-  /**
-   * Normalises and URL-encodes a resource ID.
-   *
-   * @throws {TypeError} when `id` is blank after trimming.
-   */
+  /** @throws {TypeError} when `id` is blank after trimming. */
   protected encodeId(id: string, label: string): string {
     const normalized = id.trim();
     if (!normalized) throw new TypeError(`${label} must be a non-empty string`);
     return encodeURIComponent(normalized);
   }
 
-  /**
-   * Converts a `ListOptions` object into raw query-string segments.
-   *
-   * @throws {TypeError} when pagination values are not valid positive integers.
-   */
+  /** @throws {TypeError} when pagination values are outside valid ranges. */
   protected buildQuery<TFilter>(
     options: ListOptions<TFilter> = {},
     numberFields?: ReadonlySet<string>,
@@ -94,11 +82,7 @@ export abstract class BaseResource {
     }
 
     if (options.filter) {
-      const filterParts = serializeFilters(
-        options.filter as Record<string, unknown>,
-        fields,
-      );
-      parts.push(...filterParts);
+      parts.push(...serializeFilters(options.filter as Record<string, unknown>, fields));
     }
 
     return parts;
@@ -112,9 +96,5 @@ export abstract class BaseResource {
     const query = this.buildQuery(options, numberFields);
     const raw = await this.client.get<ApiListResponse<T>>(path, query);
     return toListResult(raw);
-  }
-
-  protected async getItem<T>(path: string): Promise<T> {
-    return this.client.get<T>(path);
   }
 }

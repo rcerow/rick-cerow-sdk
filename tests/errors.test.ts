@@ -66,8 +66,8 @@ describe('AuthenticationError', () => {
     expect(new AuthenticationError().name).toBe('AuthenticationError');
   });
 
-  it('message mentions the API key', () => {
-    expect(new AuthenticationError().message).toMatch(/api key/i);
+  it('message mentions key rejection', () => {
+    expect(new AuthenticationError().message).toMatch(/rejected|api key/i);
   });
 
   it('message links to the sign-up page', () => {

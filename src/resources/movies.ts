@@ -19,7 +19,6 @@ const MOVIE_NUMBER_FIELDS: ReadonlySet<string> = new Set([
   'rottenTomatoesScore',
 ]);
 
-// All quote fields (dialog, movie id, character id) are strings.
 const QUOTE_NUMBER_FIELDS: ReadonlySet<string> = new Set();
 
 export class MovieResource extends BaseResource {
@@ -27,14 +26,11 @@ export class MovieResource extends BaseResource {
     return MOVIE_NUMBER_FIELDS;
   }
 
-  /** List all movies, with optional filtering, sorting, and pagination. */
   async list(options: ListOptions<MovieFilter> = {}): Promise<ListResult<Movie>> {
     return this.listItems<Movie, MovieFilter>('/movie', options);
   }
 
   /**
-   * Fetch a single movie by its ID.
-   *
    * @throws {TypeError}     when `id` is blank.
    * @throws {NotFoundError} when no movie with that ID exists.
    */
@@ -44,6 +40,7 @@ export class MovieResource extends BaseResource {
 
     let result: ApiListResponse<Movie>;
     try {
+      // The API returns a paginated envelope even for single-ID lookups.
       result = await this.client.get<ApiListResponse<Movie>>(`/movie/${encodedId}`);
     } catch (e) {
       if (e instanceof NotFoundError) throw new NotFoundError('Movie', trimmedId, e.responseBody);
@@ -56,10 +53,7 @@ export class MovieResource extends BaseResource {
   }
 
   /**
-   * List all quotes for a given movie, with optional filtering, sorting,
-   * and pagination.
-   *
-   * @param movieId  The `_id` of the movie.
+   * @param movieId The `_id` of the movie.
    * @throws {TypeError} when `movieId` is blank.
    */
   async listQuotes(

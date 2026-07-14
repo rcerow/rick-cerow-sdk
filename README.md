@@ -188,7 +188,7 @@ Every list method accepts a `filter` object. Each field can be:
 
 ## Error Handling
 
-HTTP-level errors extend `LotrError` and carry a `statusCode`. Transport failures throw `NetworkError`, which extends `Error` directly (no status code available).
+HTTP and response errors extend `LotrError` and carry a `statusCode`. Network failures throw `NetworkError`, which extends `Error` directly — `fetch()` threw before any HTTP response arrived, so no status code is available.
 
 ```ts
 import {
@@ -220,7 +220,7 @@ try {
 
 | Error class | When thrown |
 |---|---|
-| `AuthenticationError` | HTTP 401 — invalid or missing API key |
+| `AuthenticationError` | HTTP 401 — API key rejected by the server |
 | `NotFoundError` | HTTP 404, or resource ID not in the response |
 | `RateLimitError` | HTTP 429 — too many requests |
 | `ApiResponseError` | Successful HTTP but response body is not valid JSON |
