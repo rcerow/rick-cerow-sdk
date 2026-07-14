@@ -13,7 +13,6 @@ interface FetchClientConfig {
   baseUrl?: string;
 }
 
-/** Fetch-based transport for The One API. */
 export class FetchClient implements HttpClient {
   private readonly baseUrl: string;
   private readonly headers: Readonly<Record<string, string>>;

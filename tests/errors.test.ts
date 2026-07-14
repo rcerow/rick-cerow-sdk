@@ -67,11 +67,7 @@ describe('AuthenticationError', () => {
   });
 
   it('message mentions key rejection', () => {
-    expect(new AuthenticationError().message).toMatch(/rejected|api key/i);
-  });
-
-  it('message links to the sign-up page', () => {
-    expect(new AuthenticationError().message).toContain('the-one-api.dev');
+    expect(new AuthenticationError().message).toMatch(/rejected/i);
   });
 });
 

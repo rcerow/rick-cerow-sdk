@@ -39,28 +39,19 @@ function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
   };
 }
 
-/** Shared list-query behaviour for API resources. */
 export abstract class BaseResource {
   constructor(protected readonly client: HttpClient) {}
 
-  /**
-   * Override to declare which typed filter fields use numeric operators
-   * (gt, gte, lt, lte, in, notIn). Known typed fields not in this set
-   * use string serialization; the safety guarantee comes from TypeScript,
-   * not runtime enforcement.
-   */
   protected numberFields(): ReadonlySet<string> {
     return EMPTY_FIELDS;
   }
 
-  /** @throws {TypeError} when `id` is blank after trimming. */
   protected encodeId(id: string, label: string): string {
     const normalized = id.trim();
     if (!normalized) throw new TypeError(`${label} must be a non-empty string`);
     return encodeURIComponent(normalized);
   }
 
-  /** @throws {TypeError} when pagination values are outside valid ranges. */
   protected buildQuery<TFilter>(
     options: ListOptions<TFilter> = {},
     numberFields?: ReadonlySet<string>,

@@ -19,8 +19,6 @@ const MOVIE_NUMBER_FIELDS: ReadonlySet<string> = new Set([
   'rottenTomatoesScore',
 ]);
 
-const QUOTE_NUMBER_FIELDS: ReadonlySet<string> = new Set();
-
 export class MovieResource extends BaseResource {
   protected override numberFields(): ReadonlySet<string> {
     return MOVIE_NUMBER_FIELDS;
@@ -30,10 +28,6 @@ export class MovieResource extends BaseResource {
     return this.listItems<Movie, MovieFilter>('/movie', options);
   }
 
-  /**
-   * @throws {TypeError}     when `id` is blank.
-   * @throws {NotFoundError} when no movie with that ID exists.
-   */
   async get(id: string): Promise<Movie> {
     const encodedId = this.encodeId(id, 'Movie ID');
     const trimmedId = id.trim();
@@ -52,15 +46,8 @@ export class MovieResource extends BaseResource {
     return movie;
   }
 
-  /**
-   * @param movieId The `_id` of the movie.
-   * @throws {TypeError} when `movieId` is blank.
-   */
-  async listQuotes(
-    movieId: string,
-    options: ListOptions<QuoteFilter> = {},
-  ): Promise<ListResult<Quote>> {
+  async listQuotes(movieId: string, options: ListOptions<QuoteFilter> = {}): Promise<ListResult<Quote>> {
     const path = `/movie/${this.encodeId(movieId, 'Movie ID')}/quote`;
-    return this.listItems<Quote, QuoteFilter>(path, options, QUOTE_NUMBER_FIELDS);
+    return this.listItems<Quote, QuoteFilter>(path, options);
   }
 }

@@ -1,5 +1,3 @@
-// ── Domain models ────────────────────────────────────────────────────────────
-
 export interface Movie {
   _id: string;
   name: string;
@@ -14,13 +12,9 @@ export interface Movie {
 export interface Quote {
   _id: string;
   dialog: string;
-  /** ID of the Movie this quote belongs to. */
-  movie: string;
-  /** ID of the Character who delivered this line. */
-  character: string;
+  movie: string;     // movie _id
+  character: string; // character _id
 }
-
-// ── Response shapes ──────────────────────────────────────────────────────────
 
 /**
  * Upstream pagination envelope returned by the API.
@@ -35,7 +29,6 @@ export interface ApiListResponse<T> {
   pages: number;
 }
 
-/** Paginated result returned by all list methods. */
 export interface ListResult<T> {
   items: T[];
   total: number;
@@ -48,8 +41,6 @@ export interface ListResult<T> {
   /** `true` when this is not the first page. */
   hasPrevPage: boolean;
 }
-
-// ── Filter primitives ────────────────────────────────────────────────────────
 
 /**
  * Filter operators for string fields.
@@ -78,8 +69,6 @@ export type NumberFilter =
   | { in: number[] }
   | { notIn: number[] };
 
-// ── Resource-specific filter shapes ─────────────────────────────────────────
-
 export interface MovieFilter {
   name?: StringFilter;
   runtimeInMinutes?: NumberFilter;
@@ -92,13 +81,9 @@ export interface MovieFilter {
 
 export interface QuoteFilter {
   dialog?: StringFilter;
-  /** Filter by one or more movie IDs. */
   movie?: StringFilter;
-  /** Filter by one or more character IDs. */
   character?: StringFilter;
 }
-
-// ── Query option shapes ──────────────────────────────────────────────────────
 
 export interface SortOptions {
   /** Field name to sort by (e.g. `"name"`, `"budgetInMillions"`). */

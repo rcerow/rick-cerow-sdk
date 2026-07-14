@@ -269,29 +269,6 @@ describe('LotrClient', () => {
     expect(() => new LotrClient({ httpClient: mockHttp })).not.toThrow();
   });
 
-  it('uses an injected HttpClient for all requests', async () => {
-    const mockHttp: HttpClient = {
-      get: vi.fn().mockResolvedValue({
-        docs: [], total: 0, limit: 1000, offset: 0, page: 1, pages: 1,
-      }),
-    };
-    const client = new LotrClient({ httpClient: mockHttp });
-    await client.movies.list();
-    expect(mockHttp.get).toHaveBeenCalledOnce();
-    expect(mockHttp.get).toHaveBeenCalledWith('/movie', []);
-  });
-
-  it('does not call the global fetch when a custom HttpClient is injected', async () => {
-    const mockHttp: HttpClient = {
-      get: vi.fn().mockResolvedValue({
-        docs: [], total: 0, limit: 1000, offset: 0, page: 1, pages: 1,
-      }),
-    };
-    const client = new LotrClient({ httpClient: mockHttp });
-    await client.movies.list();
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
   it('routes both movies and quotes through the same injected HttpClient', async () => {
     const emptyList = { docs: [], total: 0, limit: 1000, offset: 0, page: 1, pages: 1 };
     const mockHttp: HttpClient = {

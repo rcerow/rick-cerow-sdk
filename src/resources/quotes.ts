@@ -2,21 +2,11 @@ import { NotFoundError } from '../errors.js';
 import type { ApiListResponse, ListOptions, ListResult, Quote, QuoteFilter } from '../types.js';
 import { BaseResource } from './base.js';
 
-const QUOTE_NUMBER_FIELDS: ReadonlySet<string> = new Set();
-
 export class QuoteResource extends BaseResource {
-  protected override numberFields(): ReadonlySet<string> {
-    return QUOTE_NUMBER_FIELDS;
-  }
-
   async list(options: ListOptions<QuoteFilter> = {}): Promise<ListResult<Quote>> {
     return this.listItems<Quote, QuoteFilter>('/quote', options);
   }
 
-  /**
-   * @throws {TypeError}     when `id` is blank.
-   * @throws {NotFoundError} when no quote with that ID exists.
-   */
   async get(id: string): Promise<Quote> {
     const encodedId = this.encodeId(id, 'Quote ID');
     const trimmedId = id.trim();
