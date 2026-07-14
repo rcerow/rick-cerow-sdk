@@ -20,8 +20,6 @@ export class QuoteResource extends BaseResource {
       throw e;
     }
 
-    const quote = result.docs[0];
-    if (!quote) throw new NotFoundError('Quote', trimmedId);
-    return quote;
+    return this.firstItem(result, 'Quote', trimmedId);
   }
 }

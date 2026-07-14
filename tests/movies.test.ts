@@ -185,12 +185,22 @@ describe('movies.list() — malformed envelope', () => {
   });
 
   it('throws ApiResponseError when docs is null', async () => {
-    mockOk({ docs: null, total: 0, limit: 1000, page: 1, pages: 1 });
+    mockOk({ docs: null, total: 0, limit: 1000, offset: 0, page: 1, pages: 1 });
     await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
   });
 
-  it('throws ApiResponseError when pagination fields are missing', async () => {
-    mockOk({ docs: [], total: 8 });
+  it('throws ApiResponseError when limit is missing', async () => {
+    mockOk({ docs: [], total: 0, offset: 0, page: 1, pages: 1 });
+    await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
+  });
+
+  it('throws ApiResponseError when offset is missing', async () => {
+    mockOk({ docs: [], total: 0, limit: 1000, page: 1, pages: 1 });
+    await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
+  });
+
+  it('throws ApiResponseError when a numeric field is NaN', async () => {
+    mockOk({ docs: [], total: 0, limit: 1000, offset: 0, page: NaN, pages: 1 });
     await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
   });
 });
@@ -266,6 +276,28 @@ describe('movies.get()', () => {
 
   it('throws TypeError for a whitespace-only movie ID', async () => {
     await expect(client.movies.get('   ')).rejects.toThrow(TypeError);
+  });
+
+  it('throws ApiResponseError for a malformed single-resource response', async () => {
+    mockOk({});
+    await expect(client.movies.get('some-id')).rejects.toThrow(ApiResponseError);
+  });
+
+  it('throws ApiResponseError when docs is null in a single-resource response', async () => {
+    mockOk({ docs: null });
+    await expect(client.movies.get('some-id')).rejects.toThrow(ApiResponseError);
+  });
+
+  it('preserves the API response body through the resource-layer 404 re-throw', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: () => Promise.reject(new Error()),
+      text: () => Promise.resolve('No movie found'),
+    });
+    const err = await client.movies.get('abc').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NotFoundError);
+    expect((err as NotFoundError).responseBody).toBe('No movie found');
   });
 });
 

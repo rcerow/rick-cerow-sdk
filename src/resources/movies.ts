@@ -41,9 +41,7 @@ export class MovieResource extends BaseResource {
       throw e;
     }
 
-    const movie = result.docs[0];
-    if (!movie) throw new NotFoundError('Movie', trimmedId);
-    return movie;
+    return this.firstItem(result, 'Movie', trimmedId);
   }
 
   async listQuotes(movieId: string, options: ListOptions<QuoteFilter> = {}): Promise<ListResult<Quote>> {

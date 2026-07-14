@@ -1,9 +1,13 @@
-import { ApiResponseError } from '../errors.js';
+import { ApiResponseError, NotFoundError } from '../errors.js';
 import type { HttpClient } from '../http-client.js';
 import type { ApiListResponse, ListOptions, ListResult, PaginationOptions } from '../types.js';
 import { serializeFilters } from '../filter.js';
 
 const EMPTY_FIELDS: ReadonlySet<string> = new Set();
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
 
 function validatePagination({ limit, page, offset }: PaginationOptions): void {
   if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
@@ -21,11 +25,13 @@ function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
   if (
     !raw ||
     !Array.isArray(raw.docs) ||
-    typeof raw.total !== 'number' ||
-    typeof raw.page !== 'number' ||
-    typeof raw.pages !== 'number'
+    !isFiniteNumber(raw.total) ||
+    !isFiniteNumber(raw.limit) ||
+    !isFiniteNumber(raw.offset) ||
+    !isFiniteNumber(raw.page) ||
+    !isFiniteNumber(raw.pages)
   ) {
-    throw new ApiResponseError(200, new Error('Malformed list response: missing required pagination fields'));
+    throw new ApiResponseError(200, new Error('Malformed list response'), 'Malformed list response: missing or non-numeric required fields');
   }
   return {
     items: raw.docs,
@@ -50,6 +56,15 @@ export abstract class BaseResource {
     const normalized = id.trim();
     if (!normalized) throw new TypeError(`${label} must be a non-empty string`);
     return encodeURIComponent(normalized);
+  }
+
+  protected firstItem<T>(raw: ApiListResponse<T>, resource: string, id: string): T {
+    if (!raw || !Array.isArray(raw.docs)) {
+      throw new ApiResponseError(200, new Error(`Malformed ${resource} response`), `Malformed ${resource} response: docs is not an array`);
+    }
+    const item = raw.docs[0];
+    if (!item) throw new NotFoundError(resource, id);
+    return item;
   }
 
   protected buildQuery<TFilter>(

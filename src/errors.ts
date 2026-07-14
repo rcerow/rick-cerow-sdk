@@ -28,8 +28,12 @@ export class RateLimitError extends LotrError {
 }
 
 export class ApiResponseError extends LotrError {
-  constructor(statusCode: number, cause: unknown) {
-    super(statusCode, 'The API returned a response that could not be parsed');
+  constructor(
+    statusCode: number,
+    cause: unknown,
+    message = 'The API returned an invalid response',
+  ) {
+    super(statusCode, message);
     this.cause = cause;
   }
 }

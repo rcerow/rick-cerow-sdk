@@ -161,4 +161,26 @@ describe('quotes.get()', () => {
   it('throws TypeError for a whitespace-only quote ID', async () => {
     await expect(client.quotes.get('   ')).rejects.toThrow(TypeError);
   });
+
+  it('throws ApiResponseError for a malformed single-resource response', async () => {
+    mockOk({});
+    await expect(client.quotes.get('some-id')).rejects.toThrow(ApiResponseError);
+  });
+
+  it('throws ApiResponseError when docs is null in a single-resource response', async () => {
+    mockOk({ docs: null });
+    await expect(client.quotes.get('some-id')).rejects.toThrow(ApiResponseError);
+  });
+
+  it('preserves the API response body through the resource-layer 404 re-throw', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: () => Promise.reject(new Error()),
+      text: () => Promise.resolve('No quote found'),
+    });
+    const err = await client.quotes.get('abc').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(NotFoundError);
+    expect((err as NotFoundError).responseBody).toBe('No quote found');
+  });
 });

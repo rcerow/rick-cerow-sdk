@@ -49,7 +49,7 @@ export class FetchClient implements HttpClient {
       try {
         return (await response.json()) as T;
       } catch (e) {
-        throw new ApiResponseError(response.status, e);
+        throw new ApiResponseError(response.status, e, 'The API response could not be parsed as JSON');
       }
     }
 
