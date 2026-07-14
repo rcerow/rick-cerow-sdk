@@ -25,7 +25,7 @@ The demo script (`examples/demo.ts`) serves as a manual integration test against
 
 ## Tradeoffs
 
-**BaseResource vs. shared functions.** `BaseResource` centralises `buildQuery`, `listItems`, and `encodeId`. Two plain functions would be simpler; the class was kept because the `numberFields()` hook lets each resource declare which fields are numeric without threading a `Set` through every call. Mild over-abstraction for two resources — earns its keep if more endpoints are added.
+**BaseResource vs. shared functions.** `BaseResource` centralizes `buildQuery`, `listItems`, and `encodeId`. Two plain functions would be simpler; the class was kept because the `numberFields()` hook lets each resource declare which fields are numeric without threading a `Set` through every call. Mild over-abstraction for two resources — earns its keep if more endpoints are added.
 
 **Filter DSL breadth.** The filter system covers the full set of operators the API documents. The cost is a larger public type surface that must stay in sync with the serializer. Unrecognized operator shapes throw at runtime rather than silently broadening the query.
 

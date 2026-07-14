@@ -147,7 +147,7 @@ describe('serializeFilters — invalid filter combinations', () => {
     ).toThrow(TypeError);
   });
 
-  it('throws TypeError for an unrecognised filter shape (empty object)', () => {
+  it('throws TypeError for an unrecognized filter shape (empty object)', () => {
     expect(() =>
       serializeFilters({ name: {} as unknown as string }, NO_NUMBER_FIELDS),
     ).toThrow(TypeError);

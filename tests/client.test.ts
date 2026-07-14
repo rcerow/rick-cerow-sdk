@@ -81,7 +81,7 @@ describe('FetchClient', () => {
     expect(url).not.toContain('?');
   });
 
-  it('normalises a trailing slash in the baseUrl', async () => {
+  it('normalizes a trailing slash in the baseUrl', async () => {
     fetchSpy.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
     const client = new FetchClient({ apiKey: 'k', baseUrl: 'https://example.com/v2/' });
@@ -91,7 +91,7 @@ describe('FetchClient', () => {
     expect(url).toBe('https://example.com/v2/movie');
   });
 
-  it('normalises multiple consecutive trailing slashes in the baseUrl', async () => {
+  it('normalizes multiple consecutive trailing slashes in the baseUrl', async () => {
     fetchSpy.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
     const client = new FetchClient({ apiKey: 'k', baseUrl: 'https://example.com/v2///' });
