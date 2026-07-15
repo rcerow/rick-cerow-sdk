@@ -1,5 +1,5 @@
 {
-  "name": "Rick Cerow SDK",
+  "name": "rick-cerow-sdk",
   "version": "1.0.0",
   "description": "TypeScript SDK for The One API — Lord of the Rings data",
   "type": "module",

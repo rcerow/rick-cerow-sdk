@@ -16,11 +16,11 @@ Finally, the public list response renames the upstream `docs` property to `items
 
 ## Testing
 
-Vitest mocks the global `fetch` so the entire suite runs offline. Each file covers one boundary:
+The default unit suite runs offline. Transport tests mock global fetch, while resource tests use an injected HttpClient where appropriate. Each file covers one boundary:
 
 - `errors.test.ts` — error hierarchy, status codes, response bodies, and causes
 - `filter.test.ts` — filter operators, encoding, and invalid filter shapes
-- `client.test.ts` — URL construction, auth headers, transport errors, andHTTP error mapping
+- `client.test.ts` — URL construction, auth headers, transport errors, and HTTP error mapping
 - `movies.test.ts`, `quotes.test.ts` — endpoint paths, response mapping, input validation, and not-found behavior
 
 `tests/integration.test.ts` contains seven tests against the live API. They run when `LOTR_API_KEY` is available and skip otherwise.
@@ -31,11 +31,11 @@ This keeps the normal suite deterministic while still verifying that the SDK's r
 
 ## Tradeoffs
 
-**BaseResource vs. shared functions.** `BaseResource` centralizes `buildQuery`, `listItems`, and `encodeId`. A few plain functions would be simpler, but the class was kept because the resourcs share transport access, validation, query construction, and response handling.  It's a bit of abstraction overkill for this project's size, but allows for resources to expand more easily in the future. 
+**BaseResource vs. shared functions.** `BaseResource` centralizes `buildQuery`, `listItems`, and `encodeId`. A few plain functions would be simpler, but the class was kept because the resources share transport access, validation, query construction, and response handling.  It's a bit of abstraction overkill for this project's size, but allows for resources to expand more easily in the future. 
 
 **Injected transport versus direct fetch.** The `HttpClient` interface adds another public concept, but it keeps resource tests independent of transport details and supports custom authentication or request behavior. The interface is intentionally limited to what the SDK currently needs.
 
-**Filter DSL breadth.** The filter system covers the full set of operators included in the API documents. This creates more public types and and serializer behavior to maintain, but prevents string and numeric operators from being mixed. Invalid filter shapes throw at runtime rather than being silently ignored.
+**Filter DSL breadth.** The filter system covers the full set of operators documented by the API. This creates more public types and serializer behavior to maintain, but prevents string and numeric operators from being mixed. Invalid filter shapes throw at runtime rather than being silently ignored.
 
 **One operator per field.** `StringFilter` and `NumberFilter` are union types, so each field accepts one operator at a time. A natural range query such as `{ runtimeInMinutes: { gte: 120, lte: 180 } }` cannot be expressed directly. This is due to the fact that whether the API supports multiple values for the same field key is unclear from its documentation.
 

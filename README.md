@@ -102,7 +102,7 @@ const result = await client.movies.list({
   sort:   { by: 'name', order: 'asc' },
   pagination: { limit: 5, page: 1 },
 });
-
+//The API documents server-side sorting, but non-_id movie sorts currently return HTTP 500 due to an upstream issue. The SDK still serializes the documented syntax correctly.
 result.items        // Movie[]
 result.total        // total matching count
 result.pages        // total pages
@@ -235,7 +235,7 @@ try {
 
 ## Running the Demo
 
-The demo script exercises every endpoint and filter type against the live API.
+The demo script exercises every endpoint and representative filters against the live API.
 
 ```sh
 # 1. Copy the env template and add your key
