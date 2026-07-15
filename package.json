@@ -1,0 +1,55 @@
+{
+  "name": "rick-cerow-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for The One API — Lord of the Rings data",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepack": "npm run check",
+    "demo": "node --env-file=.env --import tsx/esm examples/demo.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rcerow/rick-cerow-sdk.git"
+  },
+  "homepage": "https://github.com/rcerow/rick-cerow-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/rcerow/rick-cerow-sdk/issues"
+  },
+  "keywords": [
+    "lord-of-the-rings",
+    "lotr",
+    "sdk",
+    "typescript",
+    "the-one-api"
+  ],
+  "author": "Richard Cerow <richard.p.cerow@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
