@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LotrClient } from '../src/index.js';
-import { ApiResponseError, NotFoundError } from '../src/errors.js';
+import { ApiResponseError, NotFoundError, RateLimitError } from '../src/errors.js';
+import type { HttpClient } from '../src/index.js';
 import type { Quote } from '../src/types.js';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -182,5 +183,12 @@ describe('quotes.get()', () => {
     const err = await client.quotes.get('abc').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NotFoundError);
     expect((err as NotFoundError).responseBody).toBe('No quote found');
+  });
+
+  it('rethrows non-not-found errors unchanged', async () => {
+    const error = new RateLimitError('Too many requests');
+    const httpClient: HttpClient = { get: vi.fn().mockRejectedValue(error) };
+    const localClient = new LotrClient({ httpClient });
+    await expect(localClient.quotes.get('quote-id')).rejects.toBe(error);
   });
 });

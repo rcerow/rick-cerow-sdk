@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LotrClient } from '../src/index.js';
-import { ApiResponseError, NotFoundError } from '../src/errors.js';
+import { ApiResponseError, NotFoundError, RateLimitError } from '../src/errors.js';
+import type { HttpClient } from '../src/index.js';
 import type { Movie, Quote } from '../src/types.js';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -194,9 +195,10 @@ describe('movies.list() — malformed envelope', () => {
     await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
   });
 
-  it('throws ApiResponseError when offset is missing', async () => {
+  it('defaults offset to 0 when omitted (API omits it for page-based requests)', async () => {
     mockOk({ docs: [], total: 0, limit: 1000, page: 1, pages: 1 });
-    await expect(client.movies.list()).rejects.toThrow(ApiResponseError);
+    const result = await client.movies.list();
+    expect(result.offset).toBe(0);
   });
 
   it('throws ApiResponseError when a numeric field is NaN', async () => {
@@ -298,6 +300,13 @@ describe('movies.get()', () => {
     const err = await client.movies.get('abc').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(NotFoundError);
     expect((err as NotFoundError).responseBody).toBe('No movie found');
+  });
+
+  it('rethrows non-not-found errors unchanged', async () => {
+    const error = new RateLimitError('Too many requests');
+    const httpClient: HttpClient = { get: vi.fn().mockRejectedValue(error) };
+    const localClient = new LotrClient({ httpClient });
+    await expect(localClient.movies.get('movie-id')).rejects.toBe(error);
   });
 });
 

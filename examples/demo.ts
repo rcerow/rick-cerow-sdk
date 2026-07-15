@@ -66,26 +66,32 @@ async function main() {
   }
 
   // ── 4. Filter movies by budget ─────────────────────────────────────────────
+  // The demo exposed a known upstream bug in The One API: 
+  // sorting /movie results by documented fields such as boxOfficeRevenueInMillions currently returns HTTP 500. 
+  // The demo therefore fetches the complete movie list without server-side sorting and sorts the returned items client-side.
+  // Issue documented here: https://github.com/gitfrosh/lotr-api/issues/228
   section('4. Movies with budget > $90M, sorted by box office desc');
 
   const bigBudget = await client.movies.list({
     filter: { budgetInMillions: { gt: 90 } },
-    sort: { by: 'boxOfficeRevenueInMillions', order: 'desc' },
   });
-  bigBudget.items.forEach((m) =>
-    console.log(`  ${m.name}  budget=$${m.budgetInMillions}M  box=$${m.boxOfficeRevenueInMillions}M`),
-  );
+  bigBudget.items
+    .sort((a, b) => b.boxOfficeRevenueInMillions - a.boxOfficeRevenueInMillions)
+    .forEach((m) =>
+      console.log(`  ${m.name}  budget=$${m.budgetInMillions}M  box=$${m.boxOfficeRevenueInMillions}M`),
+    );
 
   // ── 5. Filter movies by award wins ─────────────────────────────────────────
   section('5. Movies with 4+ Academy Award wins');
 
   const awardWinners = await client.movies.list({
     filter: { academyAwardWins: { gte: 4 } },
-    sort: { by: 'academyAwardWins', order: 'desc' },
   });
-  awardWinners.items.forEach((m) =>
-    console.log(`  ${m.name}  wins=${m.academyAwardWins}`),
-  );
+  awardWinners.items
+    .sort((a, b) => b.academyAwardWins - a.academyAwardWins)
+    .forEach((m) =>
+      console.log(`  ${m.name}  wins=${m.academyAwardWins}`),
+    );
 
   // ── 6. Search quotes by dialog ────────────────────────────────────────────
   section('6. Quotes matching /not pass/i');

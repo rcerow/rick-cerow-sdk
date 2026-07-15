@@ -24,7 +24,7 @@ export interface ApiListResponse<T> {
   docs: T[];
   total: number;
   limit: number;
-  offset: number;
+  offset?: number;
   page: number;
   pages: number;
 }

@@ -1,4 +1,4 @@
-# lotr-sdk
+# rick-cerow-sdk
 
 TypeScript SDK for [The One API](https://the-one-api.dev/) — Lord of the Rings data.
 
@@ -15,6 +15,8 @@ Covers the **movie** and **quote** endpoints with full TypeScript types, declara
 
 ## Installation
 
+This repository is intended as a source project rather than a published npm package.
+
 Clone the repository and install dependencies:
 
 ```sh
@@ -30,7 +32,7 @@ Then import directly from the built output or from source:
 // from the built dist (after npm run build)
 import { LotrClient } from './dist/index.js';
 
-// or during development via tsx
+// During local development the examples import directly from src using tsx.
 import { LotrClient } from './src/index.js';
 ```
 
@@ -84,7 +86,7 @@ Two mutually exclusive configuration forms:
 |---|---|---|
 | `httpClient` | `HttpClient` | Your implementation of the `HttpClient` interface |
 
-The two forms are mutually exclusive at the type level; combining `apiKey` and `httpClient` is a compile-time error.
+These configuration forms are mutually exclusive.
 
 ---
 
@@ -92,7 +94,7 @@ The two forms are mutually exclusive at the type level; combining `apiKey` and `
 
 #### `movies.list(options?)`
 
-Returns all movies as a paginated `ListResult<Movie>`.
+Returns a paginated list of movies.
 
 ```ts
 const result = await client.movies.list({
@@ -107,6 +109,8 @@ result.pages        // total pages
 result.hasNextPage  // true if more pages follow
 result.hasPrevPage  // true if not on the first page
 ```
+
+**Response normalization:** `ListResult<T>` exposes `items` instead of the upstream API's `docs` field and adds `hasNextPage` / `hasPrevPage` convenience properties.
 
 #### `movies.get(id)`
 
@@ -133,7 +137,7 @@ const quotes = await client.movies.listQuotes(movie._id, {
 
 #### `quotes.list(options?)`
 
-Returns all quotes as a `ListResult<Quote>`.
+Returns a paginated list of quotes.
 
 ```ts
 const result = await client.quotes.list({
@@ -156,7 +160,7 @@ const quote = await client.quotes.get('5cd96e05de30eff6ebcce7e9');
 
 ## Filtering
 
-Every list method accepts a `filter` object. Each field can be:
+Every list method accepts an optional `filter` object. Each field can be:
 
 ### String fields (`name`, `dialog`, `movie`, `character`)
 
@@ -188,7 +192,7 @@ Every list method accepts a `filter` object. Each field can be:
 
 ## Error Handling
 
-HTTP and response errors extend `LotrError` and carry a `statusCode`. Network failures throw `NetworkError`, which extends `Error` directly — `fetch()` threw before any HTTP response arrived, so no status code is available.
+HTTP-related errors extend `LotrError` and carry a `statusCode`. Network failures throw `NetworkError`, which extends `Error` directly — `fetch()` threw before any HTTP response arrived, so no status code is available.
 
 ```ts
 import {
@@ -223,7 +227,7 @@ try {
 | `AuthenticationError` | HTTP 401 — API key rejected by the server |
 | `NotFoundError` | HTTP 404, or resource ID not in the response |
 | `RateLimitError` | HTTP 429 — too many requests |
-| `ApiResponseError` | Successful HTTP but response body is not valid JSON |
+| `ApiResponseError` | Successful HTTP but the response body is invalid or does not match the expected structure. |
 | `NetworkError` | `fetch()` threw — DNS failure, no internet, etc. |
 | `LotrError` | Any other HTTP error (base class for the above) |
 
@@ -246,7 +250,7 @@ npm run demo
 
 ## Running Tests
 
-Tests run entirely offline — no API key required.
+Unit tests run offline by default.  If `LOTR_API_KEY` is present in the environment, the integration tests will also run against the live API. Otherwise they are skipped automatically.
 
 ```sh
 npm test              # run once

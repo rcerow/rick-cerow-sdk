@@ -27,7 +27,7 @@ function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
     !Array.isArray(raw.docs) ||
     !isFiniteNumber(raw.total) ||
     !isFiniteNumber(raw.limit) ||
-    !isFiniteNumber(raw.offset) ||
+    (raw.offset !== undefined && !isFiniteNumber(raw.offset)) ||
     !isFiniteNumber(raw.page) ||
     !isFiniteNumber(raw.pages)
   ) {
@@ -37,7 +37,7 @@ function toListResult<T>(raw: ApiListResponse<T>): ListResult<T> {
     items: raw.docs,
     total: raw.total,
     limit: raw.limit,
-    offset: raw.offset,
+    offset: raw.offset ?? 0,
     page: raw.page,
     pages: raw.pages,
     hasNextPage: raw.page < raw.pages,
